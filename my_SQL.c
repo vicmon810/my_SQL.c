@@ -120,7 +120,7 @@ PrepareResult prepare_statement(InputBuffer *input_buffer, Statement *statement)
                                    statement->row_to_insert.username, statement->row_to_insert.email);
         if (args_assigned < 3)
         {
-            return PREPAER_SYNTAX_ERROR;
+            return PREPARE_SYNTAX_ERROR;
         }
         return PREPARE_SUCCESS;
     }
@@ -148,9 +148,6 @@ void execute_statement(Statement *statement)
     }
 }
 
-/*
-parse  and excute the command
-*/
 
 int main(int argc, char *argv[])
 {
