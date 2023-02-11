@@ -28,6 +28,17 @@ const uint32_t USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
 const uint32_t EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
 const uint32_t ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 
+/*TABLE structure*/
+const uint32_t PAGE_SIZE = 4096;
+#define TABLE_MAX_PAGE = 100;
+const uint32_t ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
+const uint32_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGE;
+typedef struct
+{
+    uint32_t num_rows;
+    void *pages[TABLE_MAX_PAGE];
+} table;
+
 typedef struct
 {
     char *buffer;
@@ -96,6 +107,19 @@ void close_input_buffer(InputBuffer *input_buffer)
     free(input_buffer);
 }
 
+void *row_slot(Table *table, uint32_t row_num)
+{
+    uint32_t page_num = row_num / ROWS_PER_PAGE;
+    void page = table->page[page_num];
+    if (page == NULL)
+    {
+        // allocate memory ONLY when we try to access pages;
+        page = table->pages[page_num] = malloc(PAGE_SIZE);
+    }
+    uint32_t row_offset = row_num % ROWS_PER_PAGE;
+    uint32_t byte_offset = row_offset * ROW_SIZE;
+    return page + byte_offset;
+}
 /*do_meta_command is just a wrapper for existing functionality that leaves room for more commands*/
 
 MetaCommandResult do_meta_command(InputBuffer *input_buffer)
@@ -147,7 +171,6 @@ void execute_statement(Statement *statement)
         break;
     }
 }
-
 
 int main(int argc, char *argv[])
 {
