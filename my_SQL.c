@@ -157,23 +157,66 @@ PrepareResult prepare_statement(InputBuffer *input_buffer, Statement *statement)
     return PREPARE_UNRECOGNIZED_STATEMENT;
 }
 
-void execute_statement(Statement *statement)
+ExecuteResult execute_insert(Statement *statement, Table *table)
 {
+    if (table->num_row >= TABLE_MAX_ROWS)
+    {
+        return EXECUTE_TABLE_FULL;
+    }
 
+    Row *row_to_insert = &(statement->row_to_insert);
+
+    serialize_row(row_to_insert, row_slot(table, table->num_rows));
+    table->num_rows += 1;
+
+    return EXECUTE_SUCCESS;
+}
+
+ExecuteResult execute_select(Statement *statement.Table *table)
+{
+    Row row;
+    for (uint32_t i = 0; i < table->num_rows; i++)
+    {
+        deserialize_row(row_slot(table, i), &row);
+        print_row(&row);
+    }
+    return EXECUTE_SUCCESS;
+}
+
+ExecuteResult execute_statement(Statement *statement, Table *table)
+{
     switch (statement->type)
     {
     case (STATEMENT_INSERT):
-
-        printf("This is where we would do an insert.\n");
-        break;
+        return execute_insert(statement, table);
     case (STATEMENT_SELECT):
-        printf("This is where we would do a select.\n");
-        break;
+        return execute_select(statement, table);
     }
+}
+/*initial table size */
+Table *new_table()
+{
+    Table *table = (Table *)malloc(sizeof(Table));
+    table->num_rows = 0;
+    for (uint32_t i = 0; i < TABLE_MAX_PAGE; i++)
+    {
+        table->pages[i] = NULL;
+    }
+    return table;
+}
+/*Free table*/
+void free_table(Table *table)
+{
+    for (int i = 0; table->pages[i]; i++)
+    {
+        free(table->pages[i]);
+    }
+    free(table);
 }
 
 int main(int argc, char *argv[])
 {
+    Table *table = new_table();
     InputBuffer *input_buffer = new_input_buffer();
     while (true)
     {
@@ -196,13 +239,23 @@ int main(int argc, char *argv[])
         {
         case (PREPARE_SUCCESS):
             break;
+        case (PREPARE_SYNTAX_ERROR):
+            printf("Syntax error. could not parse statement.\n");
+            continue;
         case (PREPARE_UNRECOGNIZED_STATEMENT):
             printf("Unrecognized keyword at start of '%s'.\n",
                    input_buffer->buffer);
             continue;
         }
         execute_statement(&statement);
-        printf("Executed.\n");
+        switch(execute_statement(&statement, table)){
+            case(EXECUTE_SUCCESS):
+            printf("Execute. \n");
+            break;
+            case (EXECUTE_TABLE_FULL):
+                printf("Error: Table Full.\n");
+                break;
+        }
 
     } /*-*/
 }
