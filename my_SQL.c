@@ -28,9 +28,23 @@ const uint32_t USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
 const uint32_t EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
 const uint32_t ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 
+void serialize_row(Row *source, void *destination)
+{
+    memcpy(destination + ID + _OFFSET, &(source->id), ID_SIZE);
+    memcpy(destination + USERNAME_OFFSET, &(source->username), USERNAME_SIZE);
+    memcpy(destination + EMAIL_OFFSET, &(source->email), EMAIL_SIZE);
+}
+
+void deserialize_row(void *source, Row *destination)
+{
+    memcpy(&(destination->id), source + ID_OFFSET, ID_SIZE);
+    memcpy(&(destination->username), source + USERNAME_OFFSET, USERNAME_SIZE);
+    memcpy(&(destination->email), source + EMAIL_OFFSET, EMAIL_SIZE);
+}
+
 /*TABLE structure*/
 const uint32_t PAGE_SIZE = 4096;
-#define TABLE_MAX_PAGE = 100;
+#define TABLE_MAX_PAGE 100;
 const uint32_t ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
 const uint32_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGE;
 typedef struct
@@ -248,13 +262,14 @@ int main(int argc, char *argv[])
             continue;
         }
         execute_statement(&statement);
-        switch(execute_statement(&statement, table)){
-            case(EXECUTE_SUCCESS):
+        switch (execute_statement(&statement, table))
+        {
+        case (EXECUTE_SUCCESS):
             printf("Execute. \n");
             break;
-            case (EXECUTE_TABLE_FULL):
-                printf("Error: Table Full.\n");
-                break;
+        case (EXECUTE_TABLE_FULL):
+            printf("Error: Table Full.\n");
+            break;
         }
 
     } /*-*/
