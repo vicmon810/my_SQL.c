@@ -30,7 +30,7 @@ const uint32_t ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 
 void serialize_row(Row *source, void *destination)
 {
-    memcpy(destination + ID + _OFFSET, &(source->id), ID_SIZE);
+    memcpy(destination + ID_OFFSET, &(source->id), ID_SIZE);
     memcpy(destination + USERNAME_OFFSET, &(source->username), USERNAME_SIZE);
     memcpy(destination + EMAIL_OFFSET, &(source->email), EMAIL_SIZE);
 }
@@ -44,14 +44,14 @@ void deserialize_row(void *source, Row *destination)
 
 /*TABLE structure*/
 const uint32_t PAGE_SIZE = 4096;
-#define TABLE_MAX_PAGE 100;
+#define TABLE_MAX_PAGE 100
 const uint32_t ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
 const uint32_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGE;
 typedef struct
 {
     uint32_t num_rows;
     void *pages[TABLE_MAX_PAGE];
-} table;
+} Table;
 
 typedef struct
 {
@@ -62,6 +62,13 @@ typedef struct
 
 typedef enum
 {
+    EXECUTE_SUCCESS;
+    EXECUTE_TABLE_FULL;
+}
+ExecuteResult;
+
+typedef enum
+{
     META_COMMAND_SUCCESS,
     META_COMMAND_UNRECOGNIZED_COMMAND
 } MetaCommandResult;
@@ -69,8 +76,10 @@ typedef enum
 typedef enum
 {
     PREPARE_SUCCESS,
+    PREPARE_SYNTAX_ERROR;
     PREPARE_UNRECOGNIZED_STATEMENT
-} PrepareResult;
+}
+PrepareResult;
 
 typedef enum
 {
@@ -124,7 +133,7 @@ void close_input_buffer(InputBuffer *input_buffer)
 void *row_slot(Table *table, uint32_t row_num)
 {
     uint32_t page_num = row_num / ROWS_PER_PAGE;
-    void page = table->page[page_num];
+    void *page = table->pages[page_num];
     if (page == NULL)
     {
         // allocate memory ONLY when we try to access pages;
@@ -173,7 +182,7 @@ PrepareResult prepare_statement(InputBuffer *input_buffer, Statement *statement)
 
 ExecuteResult execute_insert(Statement *statement, Table *table)
 {
-    if (table->num_row >= TABLE_MAX_ROWS)
+    if (table->num_rows >= TABLE_MAX_ROWS)
     {
         return EXECUTE_TABLE_FULL;
     }
@@ -186,7 +195,7 @@ ExecuteResult execute_insert(Statement *statement, Table *table)
     return EXECUTE_SUCCESS;
 }
 
-ExecuteResult execute_select(Statement *statement.Table *table)
+ExecuteResult execute_select(Statement *statement, Table *table)
 {
     Row row;
     for (uint32_t i = 0; i < table->num_rows; i++)
@@ -218,6 +227,7 @@ Table *new_table()
     }
     return table;
 }
+
 /*Free table*/
 void free_table(Table *table)
 {
@@ -261,7 +271,9 @@ int main(int argc, char *argv[])
                    input_buffer->buffer);
             continue;
         }
+
         execute_statement(&statement);
+
         switch (execute_statement(&statement, table))
         {
         case (EXECUTE_SUCCESS):
