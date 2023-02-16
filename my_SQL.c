@@ -28,6 +28,22 @@ const uint32_t USERNAME_OFFSET = ID_OFFSET + ID_SIZE;
 const uint32_t EMAIL_OFFSET = USERNAME_OFFSET + USERNAME_SIZE;
 const uint32_t ROW_SIZE = ID_SIZE + USERNAME_SIZE + EMAIL_SIZE;
 
+/*TABLE structure*/
+const uint32_t PAGE_SIZE = 4096;
+#define TABLE_MAX_PAGE 100
+const uint32_t ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
+const uint32_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGE;
+typedef struct
+{
+    uint32_t num_rows;
+    void *pages[TABLE_MAX_PAGE];
+} Table;
+
+void print_row(Row *row)
+{
+    printf("(%d, %s, %s)\n", row->id, row->username, row->email);
+}
+
 void serialize_row(Row *source, void *destination)
 {
     memcpy(destination + ID_OFFSET, &(source->id), ID_SIZE);
@@ -42,17 +58,6 @@ void deserialize_row(void *source, Row *destination)
     memcpy(&(destination->email), source + EMAIL_OFFSET, EMAIL_SIZE);
 }
 
-/*TABLE structure*/
-const uint32_t PAGE_SIZE = 4096;
-#define TABLE_MAX_PAGE 100
-const uint32_t ROWS_PER_PAGE = PAGE_SIZE / ROW_SIZE;
-const uint32_t TABLE_MAX_ROWS = ROWS_PER_PAGE * TABLE_MAX_PAGE;
-typedef struct
-{
-    uint32_t num_rows;
-    void *pages[TABLE_MAX_PAGE];
-} Table;
-
 typedef struct
 {
     char *buffer;
@@ -62,10 +67,9 @@ typedef struct
 
 typedef enum
 {
-    EXECUTE_SUCCESS;
-    EXECUTE_TABLE_FULL;
-}
-ExecuteResult;
+    EXECUTE_SUCCESS,
+    EXECUTE_TABLE_FULL
+} ExecuteResult;
 
 typedef enum
 {
@@ -76,10 +80,9 @@ typedef enum
 typedef enum
 {
     PREPARE_SUCCESS,
-    PREPARE_SYNTAX_ERROR;
+    PREPARE_SYNTAX_ERROR,
     PREPARE_UNRECOGNIZED_STATEMENT
-}
-PrepareResult;
+} PrepareResult;
 
 typedef enum
 {
@@ -143,8 +146,8 @@ void *row_slot(Table *table, uint32_t row_num)
     uint32_t byte_offset = row_offset * ROW_SIZE;
     return page + byte_offset;
 }
-/*do_meta_command is just a wrapper for existing functionality that leaves room for more commands*/
 
+/*do_meta_command is just a wrapper for existing functionality that leaves room for more commands*/
 MetaCommandResult do_meta_command(InputBuffer *input_buffer)
 {
     if (strcmp(input_buffer->buffer, ".exit") == 0)
@@ -271,8 +274,6 @@ int main(int argc, char *argv[])
                    input_buffer->buffer);
             continue;
         }
-
-        execute_statement(&statement);
 
         switch (execute_statement(&statement, table))
         {
